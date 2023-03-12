@@ -60,6 +60,8 @@ local theme_path = string.format("%s/.config/awesome/themes/%s/theme.lua", os.ge
 --local theme_path = string.format("~/.config/awesome/themes/catppuccin/theme.lua")
 beautiful.init(theme_path)
 beautiful.tasklist_icon_size = 14
+local nice = require("nice")
+nice()
 
 -- Run garbage collector regularly to prevent memory leaks
 gears.timer {
@@ -145,6 +147,9 @@ mykeyboardlayout = awful.widget.keyboardlayout()
 -- {{{ Wibar
 -- Create a textclock widget
 mytextclock = wibox.widget.textclock(' [ %H:%M:%S -  %d/%m/%Y - %A] ', 1)
+local textclock_clr = wibox.widget.background()
+textclock_clr:set_widget(mytextclock)
+textclock_clr:set_fg("#f9e2af")
 mympdstat = awful.widget.watch('mpd-status-stdout', 0.5)
 -- Top left
 local logout_menu_widget = require("awesome-wm-widgets.logout-menu-widget.logout-menu")
@@ -152,7 +157,6 @@ local logout_menu_widget = require("awesome-wm-widgets.logout-menu-widget.logout
 local volume_widget = require('awesome-wm-widgets.pactl-widget.volume')
 local brightness_widget = require("awesome-wm-widgets.brightness-widget.brightness")
 local batteryarc_widget = require("awesome-wm-widgets.batteryarc-widget.batteryarc")
-local battery_widget = require("awesome-wm-widgets.battery-widget.battery")
 -- Bottom Left
 -- Bottom Right
 local net_speed_widget  = require("awesome-wm-widgets.net-speed-widget.net-speed")
@@ -357,13 +361,13 @@ awful.screen.connect_for_each_screen(
     -- Create a taglist widget 
     s.mytaglist = awful.widget.taglist {
       screen  = s,
-      filter  = awful.widget.taglist.filter.all,
+      filter  = awful.widget.taglist.filter.noempty,
       buttons = taglist_buttons
     }
     -- Create a tasklist widget
     s.mytasklist = awful.widget.tasklist {
       screen  = s,
-      filter  = awful.widget.tasklist.filter.focused,
+      filter  = awful.widget.tasklist.filter.currenttags,
       widget_template = tasklist_template,
       buttons = tasklist_buttons,
       style   = {
@@ -454,7 +458,7 @@ awful.screen.connect_for_each_screen(
        --     timeout = 225, -- An API call every 3.75 minutes, net 384 API calls in a day. Leftover: 616
        --   }
        -- ),
-        mytextclock,
+        textclock_clr,
         wibox.widget.systray(),
       },
     }
@@ -496,7 +500,9 @@ awful.screen.connect_for_each_screen(
         wibox.widget.textbox(' ['),
         ram_widget(
           {
-
+            color_used = "#f38ba8",
+            color_free = "#a6e3a1",
+            color_buf  = "#fab387",
           }
         ),
         fs_widget(
@@ -538,7 +544,7 @@ root.buttons(
 -- {{{ Key bindings
 globalkeys = gears.table.join(
   awful.key(
-    { modkey, }, "s",
+    { modkey, "Control" }, "s",
     hotkeys_popup.show_help,
     {
       description="show help",
@@ -1011,7 +1017,7 @@ globalkeys = gears.table.join(
     }
   ),
   awful.key(
-    { modkey, }, "u",
+    { modkey, "Shift" }, "u",
     awful.client.urgent.jumpto,
     {
       description = "jump to urgent client",
@@ -1282,7 +1288,7 @@ clientkeys = gears.table.join(
     }
   ),
   awful.key(
-    { modkey, }, "n",
+    { modkey, "Shift" }, "n",
     function (c)
       -- The client currently has the input focus, so it cannot be
       -- minimized, since minimized clients can't have the focus.
@@ -1544,6 +1550,10 @@ awful.rules.rules = {
         "Gimp",
         "zoom",
         "pcmanfm-qt",
+        "Hexchat",
+        "Thunar",
+        "dialect",
+        "Foliate",
         "scratchpad",
         "eva",
         "btop",
@@ -1614,6 +1624,46 @@ client.connect_signal(
 )
 
 client.connect_signal(
+  "property::floating",
+  function(c)
+    local b = false;
+    if c.first_tag ~= nil then
+        b = c.first_tag.layout.name == "floating"
+    end
+    if c.floating or b then
+        awful.titlebar.show(c)
+    else
+        awful.titlebar.hide(c)
+    end
+  end
+)
+
+client.connect_signal(
+  "manage",
+  function(c)
+    if c.floating or c.first_tag.layout.name == "floating" then
+        awful.titlebar.show(c)
+    else
+        awful.titlebar.hide(c)
+    end
+  end
+)
+
+tag.connect_signal(
+  "property::layout",
+  function(t)
+    local clients = t:clients()
+    for k,c in pairs(clients) do
+        if c.floating or c.first_tag.layout.name == "floating" then
+            awful.titlebar.show(c)
+        else
+            awful.titlebar.hide(c)
+        end
+    end
+  end
+)
+
+client.connect_signal(
   "manage",
   function (c)
   -- Set the windows at the slave,
@@ -1628,64 +1678,64 @@ client.connect_signal(
   end
 )
 -- Add a titlebar if titlebars_enabled is set to true in the rules.
-client.connect_signal(
-  "request::titlebars",
-  function(c)
-    -- buttons for the titlebar
-    local buttons = gears.table.join(
-      awful.button(
-        { }, 1,
-        function()
-          c:emit_signal(
-            "request::activate",
-            "titlebar",
-            {
-              raise = true
-            }
-          )
-          awful.mouse.client.move(c)
-        end
-      ),
-      awful.button(
-        { }, 3,
-        function()
-          c:emit_signal(
-            "request::activate",
-            "titlebar",
-            {
-              raise = true
-            }
-          )
-          awful.mouse.client.resize(c)
-        end
-      )
-    )
-    awful.titlebar(c) : setup {
-      { -- Left
-        awful.titlebar.widget.iconwidget(c),
-        buttons = buttons,
-        layout  = wibox.layout.fixed.horizontal
-      },
-      { -- Middle
-        { -- Title
-          align  = "center",
-          widget = awful.titlebar.widget.titlewidget(c)
-        },
-        buttons = buttons,
-        layout  = wibox.layout.flex.horizontal
-      },
-      { -- Right
-        awful.titlebar.widget.floatingbutton (c),
-        awful.titlebar.widget.maximizedbutton(c),
-        awful.titlebar.widget.stickybutton   (c),
-        awful.titlebar.widget.ontopbutton    (c),
-        awful.titlebar.widget.closebutton    (c),
-        layout = wibox.layout.fixed.horizontal()
-      },
-      layout = wibox.layout.align.horizontal
-    }
-  end
-)
+--client.connect_signal(
+--  "request::titlebars",
+--  function(c)
+--    -- buttons for the titlebar
+--    local buttons = gears.table.join(
+--      awful.button(
+--        { }, 1,
+--        function()
+--          c:emit_signal(
+--            "request::activate",
+--            "titlebar",
+--            {
+--              raise = true
+--            }
+--          )
+--          awful.mouse.client.move(c)
+--        end
+--      ),
+--      awful.button(
+--        { }, 3,
+--        function()
+--          c:emit_signal(
+--            "request::activate",
+--            "titlebar",
+--            {
+--              raise = true
+--            }
+--          )
+--          awful.mouse.client.resize(c)
+--        end
+--      )
+--    )
+--    awful.titlebar(c) : setup {
+--      { -- Left
+--        awful.titlebar.widget.iconwidget(c),
+--        buttons = buttons,
+--        layout  = wibox.layout.fixed.horizontal
+--      },
+--      { -- Middle
+--        { -- Title
+--          align  = "center",
+--          widget = awful.titlebar.widget.titlewidget(c)
+--        },
+--        buttons = buttons,
+--        layout  = wibox.layout.flex.horizontal
+--      },
+--      { -- Right
+--        awful.titlebar.widget.floatingbutton (c),
+--        awful.titlebar.widget.maximizedbutton(c),
+--        awful.titlebar.widget.stickybutton   (c),
+--        awful.titlebar.widget.ontopbutton    (c),
+--        awful.titlebar.widget.closebutton    (c),
+--        layout = wibox.layout.fixed.horizontal()
+--      },
+--      layout = wibox.layout.align.horizontal
+--    }
+--  end
+--)
 -- Enable sloppy focus, so that focus follows mouse.
 client.connect_signal(
   "mouse::enter",

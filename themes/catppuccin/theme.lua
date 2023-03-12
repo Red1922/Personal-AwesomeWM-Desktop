@@ -38,8 +38,8 @@ theme.menu_height                               = dpi(14)
 theme.menu_width                                = dpi(140)
 theme.menu_submenu_icon                         = theme.dir .. "/icons/submenu.png"
 
-theme.taglist_squares_sel                       = theme.dir .. "/icons/square_sel.png"
-theme.taglist_squares_unsel                     = theme.dir .. "/icons/square_unsel.png"
+--theme.taglist_squares_sel                       = theme.dir .. "/icons/square_sel.png"
+--theme.taglist_squares_unsel                     = theme.dir .. "/icons/square_unsel.png"
 
 theme.layout_tile                               = theme.dir .. "/icons/tile.png"
 theme.layout_tileleft                           = theme.dir .. "/icons/tileleft.png"
